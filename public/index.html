@@ -4,21 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Monad Bump Bot</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <main class="app">
       <section class="panel">
-        <h1> King Petty Trender</h1>
-        <p class="muted">Configure, manage wallets, and run buy or buy-then-sell cycles.</p>
+        <h1>King Petty Trender</h1>
+        <p class="muted">Configure, manage wallets, and run EVM or Solana buy/sell cycles.</p>
       </section>
 
       <section class="panel">
         <h2>Config</h2>
         <form id="config-form" class="grid">
+          <label>
+            Chain
+            <select name="CHAIN">
+              <option value="EVM">EVM</option>
+              <option value="SOLANA">SOLANA</option>
+            </select>
+          </label>
           <label>RPC URL <input name="MONAD_RPC" placeholder="https://..." /></label>
           <label>Token Address <input name="TOKEN_ADDRESS" placeholder="0x..." /></label>
           <label>Bump Amount (MON) <input name="BUMP_AMOUNT_MON" placeholder="0.01" /></label>
+          <label>Solana RPC <input name="SOLANA_RPC" placeholder="https://..." /></label>
+          <label>Solana Token Mint <input name="SOLANA_TOKEN_MINT" placeholder="Token mint address" /></label>
+          <label>Solana Input Mint <input name="SOLANA_INPUT_MINT" placeholder="Default: wrapped SOL mint" /></label>
+          <label>Bump Amount (SOL) <input name="BUMP_AMOUNT_SOL" placeholder="0.01" /></label>
+          <label>Buy Slippage (bps) <input name="BUY_SLIPPAGE_BPS" placeholder="300 = 3%" /></label>
           <label>Interval (ms) <input name="INTERVAL_MS" placeholder="60000" /></label>
           <label>Fee Percent <input name="FEE_PERCENT" placeholder="10" /></label>
           <label>Fee Address <input name="FEE_ADDRESS" placeholder="0x..." /></label>
@@ -37,6 +50,8 @@
           <label>Sell Slippage (bps) <input name="SELL_SLIPPAGE_BPS" placeholder="300 = 3%" /></label>
           <label>Sell Delay (ms) <input name="SELL_DELAY_MS" placeholder="1200" /></label>
           <label>Gas Reserve (MON) <input name="GAS_RESERVE_MON" placeholder="0.002" /></label>
+          <label>Gas Reserve (SOL) <input name="GAS_RESERVE_SOL" placeholder="0.002" /></label>
+          <label>Jupiter API URL <input name="JUPITER_BASE_URL" placeholder="https://quote-api.jup.ag/v6" /></label>
           <button type="submit">Save Config</button>
         </form>
       </section>
@@ -44,7 +59,7 @@
       <section class="panel">
         <h2>Wallets</h2>
         <form id="wallet-form" class="wallet-form">
-          <input id="wallet-key" placeholder="Private key (0x...)" />
+          <input id="wallet-key" placeholder="EVM: 0x... | Solana: base58 or [byte-array]" />
           <button type="submit">Add Wallet</button>
         </form>
         <ul id="wallet-list"></ul>

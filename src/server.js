@@ -1,7 +1,7 @@
 const path = require("path");
 const express = require("express");
 const dotenv = require("dotenv");
-const { BumpBot, parseBuyerKeys } = require("./bot");
+const { BumpBot, parseBuyerKeys, normalizeChain, deriveWalletAddress } = require("./bot");
 const { getEffectiveConfig, updateConfigFields, loadEnvFile, ENV_PATH } = require("./envStore");
 
 dotenv.config();
@@ -10,9 +10,15 @@ const app = express();
 const bot = new BumpBot(getEffectiveConfig);
 
 const CONFIG_KEYS = [
+  "CHAIN",
   "MONAD_RPC",
   "TOKEN_ADDRESS",
   "BUMP_AMOUNT_MON",
+  "SOLANA_RPC",
+  "SOLANA_TOKEN_MINT",
+  "SOLANA_INPUT_MINT",
+  "BUMP_AMOUNT_SOL",
+  "BUY_SLIPPAGE_BPS",
   "INTERVAL_MS",
   "FEE_PERCENT",
   "FEE_ADDRESS",
@@ -25,8 +31,22 @@ const CONFIG_KEYS = [
   "SELL_SLIPPAGE_BPS",
   "SELL_DELAY_MS",
   "GAS_RESERVE_MON",
+  "GAS_RESERVE_SOL",
+  "JUPITER_BASE_URL",
   "BUYER_KEYS"
 ];
+
+const DEFAULT_CONFIG = {
+  CHAIN: "EVM",
+  TRADE_MODE: "BUY_ONLY",
+  BUY_SLIPPAGE_BPS: "300",
+  SELL_SLIPPAGE_BPS: "300",
+  SELL_DELAY_MS: "1200",
+  GAS_RESERVE_MON: "0.002",
+  GAS_RESERVE_SOL: "0.002",
+  SOLANA_INPUT_MINT: "So11111111111111111111111111111111111111112",
+  JUPITER_BASE_URL: "https://quote-api.jup.ag/v6"
+};
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.resolve(process.cwd(), "public")));
@@ -34,8 +54,9 @@ app.use(express.static(path.resolve(process.cwd(), "public")));
 function sanitizeConfig(config) {
   const masked = {};
   for (const key of CONFIG_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(config, key)) {
-      masked[key] = config[key];
+    const value = Object.prototype.hasOwnProperty.call(config, key) ? config[key] : DEFAULT_CONFIG[key];
+    if (value !== undefined) {
+      masked[key] = value;
     }
   }
   const secretFields = ["BUYER_KEYS", "FEE_PAYER_KEY"];
@@ -46,9 +67,10 @@ function sanitizeConfig(config) {
   }
 
   const buyers = parseBuyerKeys(config.BUYER_KEYS);
+  const chain = normalizeChain(config.CHAIN);
   masked.BUYER_WALLETS = buyers.map((pk) => {
     try {
-      return new (require("ethers").ethers.Wallet)(pk).address;
+      return deriveWalletAddress(pk, chain);
     } catch {
       return "INVALID_PRIVATE_KEY";
     }
@@ -81,10 +103,11 @@ app.post("/api/config", (req, res) => {
 
 app.get("/api/wallets", (req, res) => {
   const cfg = getEffectiveConfig();
+  const chain = normalizeChain(cfg.CHAIN);
   const keys = parseBuyerKeys(cfg.BUYER_KEYS);
   const wallets = keys.map((pk) => {
     try {
-      const address = new (require("ethers").ethers.Wallet)(pk).address;
+      const address = deriveWalletAddress(pk, chain);
       return { address, valid: true };
     } catch {
       return { address: null, valid: false };
@@ -94,6 +117,8 @@ app.get("/api/wallets", (req, res) => {
 });
 
 app.post("/api/wallets", (req, res) => {
+  const cfg = getEffectiveConfig();
+  const chain = normalizeChain(cfg.CHAIN);
   const key = `${req.body.privateKey || ""}`.trim();
   if (!key) {
     return res.status(400).json({ ok: false, error: "privateKey is required" });
@@ -101,7 +126,7 @@ app.post("/api/wallets", (req, res) => {
 
   let address;
   try {
-    address = new (require("ethers").ethers.Wallet)(key).address;
+    address = deriveWalletAddress(key, chain);
   } catch {
     return res.status(400).json({ ok: false, error: "Invalid private key" });
   }
@@ -120,12 +145,14 @@ app.post("/api/wallets", (req, res) => {
 
 app.delete("/api/wallets/:address", (req, res) => {
   const target = req.params.address.toLowerCase();
+  const cfg = getEffectiveConfig();
+  const chain = normalizeChain(cfg.CHAIN);
   const env = loadEnvFile();
   const existing = parseBuyerKeys(env.BUYER_KEYS);
 
   const kept = existing.filter((pk) => {
     try {
-      const walletAddress = new (require("ethers").ethers.Wallet)(pk).address.toLowerCase();
+      const walletAddress = deriveWalletAddress(pk, chain).toLowerCase();
       return walletAddress !== target;
     } catch {
       return true;
