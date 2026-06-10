@@ -9,11 +9,35 @@ dotenv.config();
 const app = express();
 const bot = new BumpBot(getEffectiveConfig);
 
+const CONFIG_KEYS = [
+  "MONAD_RPC",
+  "TOKEN_ADDRESS",
+  "BUMP_AMOUNT_MON",
+  "INTERVAL_MS",
+  "FEE_PERCENT",
+  "FEE_ADDRESS",
+  "FEE_PAYER_KEY",
+  "MAX_BUYS_PER_CYCLE",
+  "LENS_ADDRESS",
+  "ROUTER_ADDRESS",
+  "TRADE_MODE",
+  "PROCEEDS_ADDRESS",
+  "SELL_SLIPPAGE_BPS",
+  "SELL_DELAY_MS",
+  "GAS_RESERVE_MON",
+  "BUYER_KEYS"
+];
+
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.resolve(process.cwd(), "public")));
 
 function sanitizeConfig(config) {
-  const masked = { ...config };
+  const masked = {};
+  for (const key of CONFIG_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(config, key)) {
+      masked[key] = config[key];
+    }
+  }
   const secretFields = ["BUYER_KEYS", "FEE_PAYER_KEY"];
   for (const key of secretFields) {
     if (masked[key]) {
@@ -42,23 +66,7 @@ app.get("/api/config", (req, res) => {
 });
 
 app.post("/api/config", (req, res) => {
-  const allowed = [
-    "MONAD_RPC",
-    "TOKEN_ADDRESS",
-    "BUMP_AMOUNT_MON",
-    "INTERVAL_MS",
-    "FEE_PERCENT",
-    "FEE_ADDRESS",
-    "FEE_PAYER_KEY",
-    "MAX_BUYS_PER_CYCLE",
-    "LENS_ADDRESS",
-    "ROUTER_ADDRESS",
-    "TRADE_MODE",
-    "PROCEEDS_ADDRESS",
-    "SELL_SLIPPAGE_BPS",
-    "SELL_DELAY_MS",
-    "GAS_RESERVE_MON"
-  ];
+  const allowed = CONFIG_KEYS.filter((k) => k !== "BUYER_KEYS");
 
   const patch = {};
   for (const key of allowed) {
