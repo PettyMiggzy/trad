@@ -52,7 +52,12 @@ app.post("/api/config", (req, res) => {
     "FEE_PAYER_KEY",
     "MAX_BUYS_PER_CYCLE",
     "LENS_ADDRESS",
-    "ROUTER_ADDRESS"
+    "ROUTER_ADDRESS",
+    "TRADE_MODE",
+    "PROCEEDS_ADDRESS",
+    "SELL_SLIPPAGE_BPS",
+    "SELL_DELAY_MS",
+    "GAS_RESERVE_MON"
   ];
 
   const patch = {};

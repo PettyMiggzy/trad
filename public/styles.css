@@ -59,6 +59,7 @@ label {
 }
 
 input,
+select,
 button {
   border-radius: 6px;
   border: 1px solid var(--line);
@@ -67,6 +68,11 @@ button {
 }
 
 input {
+  background: #111722;
+  color: var(--text);
+}
+
+select {
   background: #111722;
   color: var(--text);
 }

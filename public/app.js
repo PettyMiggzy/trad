@@ -18,8 +18,9 @@ async function loadConfig() {
   const data = await api("/api/config");
   const cfg = data.config;
   const form = document.getElementById("config-form");
-  for (const input of form.querySelectorAll("input")) {
-    input.value = cfg[input.name] && cfg[input.name] !== "***" ? cfg[input.name] : "";
+  for (const field of form.querySelectorAll("input, select")) {
+    const value = cfg[field.name];
+    field.value = value && value !== "***" ? value : "";
   }
 }
 
@@ -61,8 +62,8 @@ document.getElementById("config-form").addEventListener("submit", async (event) 
   event.preventDefault();
   const form = event.target;
   const payload = {};
-  for (const input of form.querySelectorAll("input")) {
-    payload[input.name] = input.value.trim();
+  for (const field of form.querySelectorAll("input, select")) {
+    payload[field.name] = field.value.trim();
   }
   await api("/api/config", {
     method: "POST",

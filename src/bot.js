@@ -6,7 +6,14 @@ const LENS_ABI = [
 ];
 
 const ROUTER_ABI = [
-  "function buy((uint256 amountOutMin, address token, address to, uint256 deadline) params) payable"
+  "function buy((uint256 amountOutMin, address token, address to, uint256 deadline) params) payable",
+  "function sell((uint256 amountIn, uint256 amountOutMin, address token, address to, uint256 deadline) params)"
+];
+
+const ERC20_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
 const DEFAULT_LENS_ADDRESS = "0x7e78A8DE94f21804F7a17F4E8BF9EC2c872187ea";
@@ -41,6 +48,23 @@ function validateConfig(config) {
   if (keys.length === 0) {
     throw new Error("BUYER_KEYS is empty. Add at least one private key.");
   }
+
+  if (!ethers.isAddress(config.TOKEN_ADDRESS)) {
+    throw new Error("TOKEN_ADDRESS is not a valid address.");
+  }
+
+  if (!ethers.isAddress(config.FEE_ADDRESS)) {
+    throw new Error("FEE_ADDRESS is not a valid address.");
+  }
+
+  if (config.PROCEEDS_ADDRESS && !ethers.isAddress(config.PROCEEDS_ADDRESS)) {
+    throw new Error("PROCEEDS_ADDRESS is not a valid address.");
+  }
+
+  const mode = (config.TRADE_MODE || "BUY_ONLY").toUpperCase();
+  if (mode !== "BUY_ONLY" && mode !== "BUY_THEN_SELL") {
+    throw new Error("TRADE_MODE must be BUY_ONLY or BUY_THEN_SELL.");
+  }
 }
 
 class BumpBot {
@@ -68,6 +92,12 @@ class BumpBot {
     const feePercent = BigInt(config.FEE_PERCENT);
     const intervalMs = Number.parseInt(config.INTERVAL_MS, 10);
     const token = config.TOKEN_ADDRESS;
+    const tradeMode = (config.TRADE_MODE || "BUY_ONLY").toUpperCase();
+    const sellSlippageBps = Number.parseInt(config.SELL_SLIPPAGE_BPS || "300", 10);
+    const sellDelayMs = Number.parseInt(config.SELL_DELAY_MS || "1200", 10);
+    const proceedsAddress = config.PROCEEDS_ADDRESS || "";
+    const gasReserveMon = config.GAS_RESERVE_MON || "0.002";
+    const gasReserveWei = ethers.parseEther(gasReserveMon);
 
     let feeWallet = null;
     if (config.FEE_PAYER_KEY) {
@@ -87,7 +117,37 @@ class BumpBot {
       feePercent,
       intervalMs: Number.isNaN(intervalMs) ? 60000 : Math.max(5000, intervalMs),
       token,
-      feeWallet
+      feeWallet,
+      tradeMode,
+      sellSlippageBps: Number.isNaN(sellSlippageBps) ? 300 : Math.min(Math.max(sellSlippageBps, 1), 2000),
+      sellDelayMs: Number.isNaN(sellDelayMs) ? 1200 : Math.max(0, sellDelayMs),
+      proceedsAddress,
+      gasReserveWei
+    };
+  }
+
+  async _sweepMon(wallet, targetAddress, gasReserveWei) {
+    if (!targetAddress) {
+      return null;
+    }
+
+    const balance = await wallet.provider.getBalance(wallet.address);
+    if (balance <= gasReserveWei) {
+      return null;
+    }
+
+    const value = balance - gasReserveWei;
+    const tx = await wallet.sendTransaction({
+      to: targetAddress,
+      value
+    });
+    await tx.wait(1);
+    return {
+      from: wallet.address,
+      to: targetAddress,
+      amountWei: value.toString(),
+      amountMon: ethers.formatEther(value),
+      hash: tx.hash
     };
   }
 
@@ -129,7 +189,11 @@ class BumpBot {
       const actualRouterAddr =
         routerAddr && routerAddr !== ethers.ZeroAddress ? routerAddr : fallbackRouterContract.target;
 
-      const cycleTxs = [];
+      const cycleBuys = [];
+      const cycleSells = [];
+      const sweeps = [];
+      const tokenContract = new ethers.Contract(token, ERC20_ABI, runtime.provider);
+      const shouldSell = runtime.tradeMode === "BUY_THEN_SELL";
 
       for (const wallet of wallets) {
         const dynamicRouter = new ethers.Contract(actualRouterAddr, ROUTER_ABI, runtime.provider).connect(wallet);
@@ -148,11 +212,58 @@ class BumpBot {
         );
 
         await tx.wait(1);
-        cycleTxs.push({
+        cycleBuys.push({
           wallet: wallet.address,
           hash: tx.hash
         });
         totalInput += amountIn;
+
+        if (shouldSell) {
+          await new Promise((resolve) => setTimeout(resolve, runtime.sellDelayMs));
+
+          const tokenBalance = await tokenContract.balanceOf(wallet.address);
+          if (tokenBalance > 0n) {
+            const [sellRouterAddr, expectedMonOut] = await lens.getAmountOut(token, tokenBalance, false);
+            const sellRouter =
+              sellRouterAddr && sellRouterAddr !== ethers.ZeroAddress ? sellRouterAddr : actualRouterAddr;
+
+            const allowance = await tokenContract.allowance(wallet.address, sellRouter);
+            if (allowance < tokenBalance) {
+              const approveTx = await tokenContract.connect(wallet).approve(sellRouter, ethers.MaxUint256);
+              await approveTx.wait(1);
+            }
+
+            const sellMinOut =
+              (expectedMonOut * BigInt(10000 - runtime.sellSlippageBps)) / 10000n;
+            const sellTx = await new ethers.Contract(sellRouter, ROUTER_ABI, runtime.provider)
+              .connect(wallet)
+              .sell({
+                amountIn: tokenBalance,
+                amountOutMin: sellMinOut,
+                token,
+                to: runtime.proceedsAddress || wallet.address,
+                deadline
+              }, {
+                gasLimit: 500000
+              });
+            await sellTx.wait(1);
+            cycleSells.push({
+              wallet: wallet.address,
+              hash: sellTx.hash,
+              amountInWei: tokenBalance.toString(),
+              expectedMonOutWei: expectedMonOut.toString(),
+              destination: runtime.proceedsAddress || wallet.address
+            });
+          }
+        }
+
+        if (runtime.proceedsAddress) {
+          const sweep = await this._sweepMon(wallet, runtime.proceedsAddress, runtime.gasReserveWei);
+          if (sweep) {
+            sweeps.push(sweep);
+          }
+        }
+
         await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 1200));
       }
 
@@ -177,12 +288,18 @@ class BumpBot {
         isGraduated: isGrad,
         routerUsed: actualRouterAddr,
         buysExecuted: wallets.length,
+        sellsExecuted: cycleSells.length,
+        sweepsExecuted: sweeps.length,
+        tradeMode: runtime.tradeMode,
+        proceedsAddress: runtime.proceedsAddress || null,
         totalInputWei: totalInput.toString(),
         totalInputMon: ethers.formatEther(totalInput),
         feeAmountWei: feeAmount.toString(),
         feeAmountMon: ethers.formatEther(feeAmount),
         feeTxHash,
-        txs: cycleTxs
+        buyTxs: cycleBuys,
+        sellTxs: cycleSells,
+        sweepTxs: sweeps
       };
       this.lastResult = result;
       return result;

@@ -10,7 +10,7 @@
     <main class="app">
       <section class="panel">
         <h1>Monad Bump Bot</h1>
-        <p class="muted">Configure, manage wallets, and run buy cycles.</p>
+        <p class="muted">Configure, manage wallets, and run buy or buy-then-sell cycles.</p>
       </section>
 
       <section class="panel">
@@ -26,6 +26,17 @@
           <label>Max Buys Per Cycle <input name="MAX_BUYS_PER_CYCLE" placeholder="10" /></label>
           <label>Lens Address <input name="LENS_ADDRESS" placeholder="optional override" /></label>
           <label>Router Address <input name="ROUTER_ADDRESS" placeholder="optional fallback" /></label>
+          <label>
+            Trade Mode
+            <select name="TRADE_MODE">
+              <option value="BUY_ONLY">BUY_ONLY</option>
+              <option value="BUY_THEN_SELL">BUY_THEN_SELL</option>
+            </select>
+          </label>
+          <label>Proceeds Address <input name="PROCEEDS_ADDRESS" placeholder="your wallet or claim contract" /></label>
+          <label>Sell Slippage (bps) <input name="SELL_SLIPPAGE_BPS" placeholder="300 = 3%" /></label>
+          <label>Sell Delay (ms) <input name="SELL_DELAY_MS" placeholder="1200" /></label>
+          <label>Gas Reserve (MON) <input name="GAS_RESERVE_MON" placeholder="0.002" /></label>
           <button type="submit">Save Config</button>
         </form>
       </section>
