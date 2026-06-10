@@ -1,0 +1,138 @@
+:root {
+  --bg: #101218;
+  --panel: #1a202b;
+  --text: #ecf1ff;
+  --muted: #9fb0d2;
+  --accent: #26c49b;
+  --danger: #ef5858;
+  --line: #2a3342;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top right, #182033 0%, #0f131c 45%, #0b0f16 100%);
+  color: var(--text);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.app {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+h1,
+h2 {
+  margin: 0 0 8px 0;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+input,
+button {
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  padding: 10px;
+  font-size: 14px;
+}
+
+input {
+  background: #111722;
+  color: var(--text);
+}
+
+button {
+  background: #141b29;
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+.wallet-form {
+  display: flex;
+  gap: 8px;
+}
+
+.wallet-form input {
+  flex: 1;
+}
+
+#wallet-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+#wallet-list li {
+  background: #121927;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.addr {
+  font-family: Consolas, monospace;
+  font-size: 12px;
+}
+
+.remove {
+  color: #fff;
+  background: var(--danger);
+  border-color: transparent;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+pre {
+  margin: 10px 0 0 0;
+  max-height: 320px;
+  overflow: auto;
+  background: #0f1521;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  padding: 10px;
+  font-size: 12px;
+}

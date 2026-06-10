@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monad Bump Bot</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel">
+        <h1>Monad Bump Bot</h1>
+        <p class="muted">Configure, manage wallets, and run buy cycles.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Config</h2>
+        <form id="config-form" class="grid">
+          <label>RPC URL <input name="MONAD_RPC" placeholder="https://..." /></label>
+          <label>Token Address <input name="TOKEN_ADDRESS" placeholder="0x..." /></label>
+          <label>Bump Amount (MON) <input name="BUMP_AMOUNT_MON" placeholder="0.01" /></label>
+          <label>Interval (ms) <input name="INTERVAL_MS" placeholder="60000" /></label>
+          <label>Fee Percent <input name="FEE_PERCENT" placeholder="10" /></label>
+          <label>Fee Address <input name="FEE_ADDRESS" placeholder="0x..." /></label>
+          <label>Fee Payer Key <input name="FEE_PAYER_KEY" placeholder="0x..." /></label>
+          <label>Max Buys Per Cycle <input name="MAX_BUYS_PER_CYCLE" placeholder="10" /></label>
+          <label>Lens Address <input name="LENS_ADDRESS" placeholder="optional override" /></label>
+          <label>Router Address <input name="ROUTER_ADDRESS" placeholder="optional fallback" /></label>
+          <button type="submit">Save Config</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Wallets</h2>
+        <form id="wallet-form" class="wallet-form">
+          <input id="wallet-key" placeholder="Private key (0x...)" />
+          <button type="submit">Add Wallet</button>
+        </form>
+        <ul id="wallet-list"></ul>
+      </section>
+
+      <section class="panel controls">
+        <h2>Bot Control</h2>
+        <div class="buttons">
+          <button id="run-once" type="button">Run Once</button>
+          <button id="start" type="button">Start Scheduler</button>
+          <button id="stop" type="button">Stop Scheduler</button>
+          <button id="refresh" type="button">Refresh</button>
+        </div>
+        <pre id="status"></pre>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
